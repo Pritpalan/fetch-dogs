@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/fetch-dogs/static/css/main.41035f93.css",
+    "main.js": "/fetch-dogs/static/js/main.e4cca52c.js",
+    "index.html": "/fetch-dogs/index.html",
+    "main.41035f93.css.map": "/fetch-dogs/static/css/main.41035f93.css.map",
+    "main.e4cca52c.js.map": "/fetch-dogs/static/js/main.e4cca52c.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.41035f93.css",
+    "static/js/main.e4cca52c.js"
+  ]
+}
