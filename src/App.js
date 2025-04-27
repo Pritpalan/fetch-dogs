@@ -27,7 +27,7 @@ function App() {
     <>
       <Router>
         <Routes>
-          <Route path="/" element={<Login />} />
+          <Route path="/fetch-dogs" element={<Login />} />
           <Route
             path="/search"
             element={isLoggedIn ? <Search /> : <Navigate to="/" />}
