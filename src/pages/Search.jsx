@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import fetchClient from '../API/fetchClient';
 import Select from 'react-select';
 import { toast } from 'react-hot-toast';
+import { useNavigate } from 'react-router-dom';
+
 
 const Search = () => {
   const [breeds, setBreeds] = useState([]);
@@ -19,6 +21,7 @@ const Search = () => {
   const [loadingMatch, setLoadingMatch] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [allDogs, setAllDogs] = useState({});
+  const navigate = useNavigate();
 
 
   const resultsPerPage = 12;
@@ -123,7 +126,8 @@ const Search = () => {
       localStorage.removeItem('isLoggedIn');
       toast.success('Logged out successfully');
       setTimeout(() => {
-        window.location.href = '/';
+        // window.location.href = '/';
+        navigate('/fetch-dogs/search');
       }, 1500);
     } catch (err) {
       toast.error('Logout failed. Please try again.');
