@@ -18,7 +18,7 @@ function App() {
     const interval = setInterval(() => {
       const status = localStorage.getItem('isLoggedIn') === 'true';
       setIsLoggedIn(status);
-    }, 1000);
+    });
 
     return () => clearInterval(interval);
   }, []);
