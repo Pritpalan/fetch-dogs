@@ -81,6 +81,7 @@ const Search = () => {
 
   useEffect(() => {
     fetchDogs();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedBreeds, sortOrder]);
 
   const toggleFavorite = (dogId) => {

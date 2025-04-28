@@ -27,9 +27,10 @@ function App() {
     <>
       <Router>
         <Routes>
+          <Route path="/" element={<Navigate to="/fetch-dogs" replace />} />
           <Route path="/fetch-dogs" element={<Login />} />
           <Route
-            path="/search"
+            path="/fetch-dogs/search"
             element={isLoggedIn ? <Search /> : <Navigate to="/" />}
           />
         </Routes>

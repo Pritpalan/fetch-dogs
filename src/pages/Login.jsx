@@ -27,7 +27,7 @@ const Login = () => {
       toast.success("Login successful! Redirecting...");
 
       setTimeout(() => {
-        window.location.href = "/search";
+        window.location.href = "/fetch-dogs/search";
       }, 800);
     } catch (err) {
       toast.error("Login failed:", err);
