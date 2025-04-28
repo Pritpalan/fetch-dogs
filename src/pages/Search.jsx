@@ -126,7 +126,6 @@ const Search = () => {
       localStorage.removeItem('isLoggedIn');
       toast.success('Logged out successfully');
       setTimeout(() => {
-        // window.location.href = '/';
         navigate('/');
       }, 1500);
     } catch (err) {

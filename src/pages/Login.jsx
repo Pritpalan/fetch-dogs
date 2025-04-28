@@ -30,7 +30,6 @@ const Login = () => {
       toast.success('Login successful! Redirecting...');
 
       setTimeout(() => {
-        // window.location.href = window.location.host + '/fetch-dogs/search';
         navigate('/fetch-dogs/search');
       }, 800);
     } catch (err) {

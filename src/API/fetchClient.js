@@ -18,7 +18,6 @@ fetchClient.interceptors.response.use(
       const navigate = useNavigate();
 
       setTimeout(() => {
-        // window.location.href = '/';
         navigate("/");
       }, 2000);
     }
