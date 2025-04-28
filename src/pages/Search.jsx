@@ -127,7 +127,7 @@ const Search = () => {
       toast.success('Logged out successfully');
       setTimeout(() => {
         // window.location.href = '/';
-        navigate('/fetch-dogs/search');
+        navigate('/');
       }, 1500);
     } catch (err) {
       toast.error('Logout failed. Please try again.');

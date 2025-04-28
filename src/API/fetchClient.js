@@ -19,7 +19,7 @@ fetchClient.interceptors.response.use(
 
       setTimeout(() => {
         // window.location.href = '/';
-        navigate("/fetch-dogs");
+        navigate("/");
       }, 2000);
     }
     return Promise.reject(error);
