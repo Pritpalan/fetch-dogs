@@ -30,7 +30,7 @@ const Login = () => {
         window.location.href = "/search";
       }, 800);
     } catch (err) {
-      console.error("Login failed:", err);
+      toast.error("Login failed:", err);
       setError("Login failed. Please check your name and email.");
       localStorage.removeItem("isLoggedIn");
     } finally {

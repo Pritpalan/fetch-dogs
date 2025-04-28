@@ -18,13 +18,20 @@ const Search = () => {
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const [loadingMatch, setLoadingMatch] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [allDogs, setAllDogs] = useState({});
+
 
   const resultsPerPage = 12;
 
+  const totalPages = Math.ceil(totalResults / resultsPerPage);
+
   const getFilteredDogs = () => {
-    return showOnlyFavorites
-      ? dogs.filter((dog) => favorites.includes(dog.id))
-      : dogs;
+    if (showOnlyFavorites) {
+      return favorites
+        .map((favId) => allDogs[favId])
+        .filter(Boolean); // in case some dog data is missing
+    }
+    return dogs;
   };
 
   useEffect(() => {
@@ -33,57 +40,48 @@ const Search = () => {
         const res = await fetchClient.get("/dogs/breeds");
         setBreeds(res.data);
       } catch (err) {
-        console.error("Error fetching breeds:", err);
+        toast.error("Error fetching breeds:", err);
       }
     };
     fetchBreeds();
   }, []);
 
-  const fetchDogs = async (url = "/dogs/search") => {
+  const fetchDogs = async (offset = 0) => {
     try {
-      let res;
-      if (url === "/dogs/search") {
-        res = await fetchClient.get(url, {
-          params: {
-            breeds: selectedBreeds.length > 0 ? selectedBreeds : [],
-            sort: `breed:${sortOrder}`,
-            size: resultsPerPage,
-          },
-        });
-        setCurrentPage(1);
-      } else {
-        res = await fetchClient.get(url);
-        const match = url.match(/from=(\d+)/);
-        const offset = match ? parseInt(match[1], 10) : 0;
-        setCurrentPage(Math.floor(offset / resultsPerPage) + 1);
-      }
-
+      const res = await fetchClient.get("/dogs/search", {
+        params: {
+          breeds: selectedBreeds.length > 0 ? selectedBreeds : [],
+          sort: `breed:${sortOrder}`,
+          size: resultsPerPage,
+          from: offset,
+        },
+      });
+      setCurrentPage(Math.floor(offset / resultsPerPage) + 1);
       setTotalResults(res.data.total);
 
       const dogDetails = await fetchClient.post("/dogs", res.data.resultIds);
       setDogs(dogDetails.data);
+      setAllDogs((prev) => {
+        const updated = { ...prev };
+        dogDetails.data.forEach((dog) => {
+          updated[dog.id] = dog;
+        });
+        return updated;
+      });
 
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (err) {
-      console.error("Failed to fetch dogs:", err);
+      toast.error("Failed to fetch dogs:", err);
     }
   };
 
   useEffect(() => {
-    const fetchAllDogs = async () => {
-      await fetchDogs();
-    };
-    fetchAllDogs();
-  }, [selectedBreeds, sortOrder]);
+    localStorage.setItem("favorites", JSON.stringify(favorites));
+  }, [favorites]);
 
   useEffect(() => {
-    localStorage.setItem("favorites", JSON.stringify(favorites));
-
-    // ✨ Important: If the matchedDog is removed from favorites, clear match
-    if (matchedDog && !favorites.includes(matchedDog.id)) {
-      setMatchedDog(null);
-    }
-  }, [favorites, matchedDog]);
+    fetchDogs();
+  }, [selectedBreeds, sortOrder]);
 
   const toggleFavorite = (dogId) => {
     setFavorites((prev) =>
@@ -91,29 +89,28 @@ const Search = () => {
         ? prev.filter((id) => id !== dogId)
         : [...prev, dogId]
     );
+  
+    if (matchedDog && matchedDog.id === dogId) {
+      setMatchedDog(null);
+    }
   };
+  
 
   const handleMatch = () => {
     if (favorites.length === 0) {
-      toast.error("Please add some dogs to favorites first!");
+      toast.error("Add dogs to favorites first to find a match!");
       return;
     }
-
+    const availableFavorites = favorites.filter((id) => allDogs[id]);
+    if (availableFavorites.length === 0) {
+      toast.error('No data available for selected favorites.');
+      return;
+    }
     setLoadingMatch(true);
 
     setTimeout(() => {
-      const favoriteDogs = dogs.filter((dog) => favorites.includes(dog.id));
-
-      if (favoriteDogs.length === 0) {
-        toast.error("No matching favorite dogs found. Try favoriting more dogs!");
-        setLoadingMatch(false);
-        return;
-      }
-
-      const randomIndex = Math.floor(Math.random() * favoriteDogs.length);
-      const match = favoriteDogs[randomIndex];
-
-      setMatchedDog(match);
+      const lastFavId = availableFavorites[availableFavorites.length - 1];
+      setMatchedDog(allDogs[lastFavId]);
       setLoadingMatch(false);
     }, 1200);
   };
@@ -128,11 +125,35 @@ const Search = () => {
         window.location.href = "/";
       }, 1500);
     } catch (err) {
-      console.error("Logout failed", err);
       toast.error("Logout failed. Please try again.");
     } finally {
       setLoggingOut(false);
     }
+  };
+
+  const getVisiblePages = () => {
+    if (totalPages <= 5) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    if (currentPage <= 3) {
+      return [1, 2, 3, 4, 5];
+    }
+    if (currentPage >= totalPages - 2) {
+      return [
+        totalPages - 4,
+        totalPages - 3,
+        totalPages - 2,
+        totalPages - 1,
+        totalPages,
+      ];
+    }
+    return [
+      currentPage - 2,
+      currentPage - 1,
+      currentPage,
+      currentPage + 1,
+      currentPage + 2,
+    ];
   };
 
   return (
@@ -151,6 +172,7 @@ const Search = () => {
 
         <h2 className="text-2xl font-bold mb-6 text-center">Browse Dogs</h2>
 
+        {/* Filters */}
         <div className="flex flex-wrap justify-center gap-4 items-end mb-8">
           <div className="flex flex-col text-center">
             <label className="font-semibold text-gray-600 mb-1">Breed</label>
@@ -158,14 +180,18 @@ const Search = () => {
               isMulti
               options={breeds.map((breed) => ({ value: breed, label: breed }))}
               value={selectedBreeds.map((b) => ({ value: b, label: b }))}
-              onChange={(options) => setSelectedBreeds(options.map((opt) => opt.value))}
+              onChange={(options) =>
+                setSelectedBreeds(options.map((opt) => opt.value))
+              }
               className="w-60 text-left"
               placeholder="Select Breeds..."
             />
           </div>
 
           <div className="flex flex-col text-center">
-            <label className="font-semibold text-gray-600 mb-1">Sort by Breed</label>
+            <label className="font-semibold text-gray-600 mb-1">
+              Sort by Breed
+            </label>
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value)}
@@ -180,10 +206,14 @@ const Search = () => {
             <button
               onClick={() => setShowOnlyFavorites((prev) => !prev)}
               className={`px-4 py-2 rounded-md ${
-                showOnlyFavorites ? "bg-red-500 text-white" : "bg-gray-300 text-black"
+                showOnlyFavorites
+                  ? "bg-red-500 text-white"
+                  : "bg-gray-300 text-black"
               } hover:bg-red-400`}
             >
-              {showOnlyFavorites ? "Showing Favorites ❤️" : "Show Favorites Only"}
+              {showOnlyFavorites
+                ? "Showing Favorites ❤️"
+                : "Show Favorites Only"}
             </button>
           </div>
 
@@ -201,6 +231,7 @@ const Search = () => {
           </div>
         </div>
 
+        {/* Dogs */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {getFilteredDogs().map((dog) => (
             <div
@@ -223,63 +254,62 @@ const Search = () => {
               <button
                 onClick={() => toggleFavorite(dog.id)}
                 className={`mt-3 px-4 py-2 rounded ${
-                  favorites.includes(dog.id) ? "bg-red-500 text-white" : "bg-gray-300 text-black"
+                  favorites.includes(dog.id)
+                    ? "bg-red-500 text-white"
+                    : "bg-gray-300 text-black"
                 }`}
               >
-                {favorites.includes(dog.id) ? "Favorited ❤️" : "Add to Favorites"}
+                {favorites.includes(dog.id)
+                  ? "Saved ❤️"
+                  : "Add to Favorites"}
               </button>
             </div>
           ))}
         </div>
 
-        {!showOnlyFavorites && totalResults > 0 && (
-          <div className="flex justify-center mt-8 space-x-2">
-            <button
-              disabled={currentPage === 1}
-              onClick={() => fetchDogs(`/dogs/search?from=${(currentPage - 2) * resultsPerPage}`)}
-              className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-200"
-            >
-              &lt; Previous
-            </button>
-
-            {Array.from({ length: Math.min(5, Math.ceil(totalResults / resultsPerPage)) }, (_, idx) => (
+        {/* Pagination */}
+        {!showOnlyFavorites && totalPages > 1 && (
+          <div className="flex flex-col items-center mt-8 space-y-2">
+            <div className="flex space-x-2">
               <button
-                key={idx + 1}
-                onClick={() => fetchDogs(`/dogs/search?from=${idx * resultsPerPage}`)}
-                className={`px-3 py-1 border rounded ${
-                  currentPage === idx + 1 ? "bg-black text-white" : "hover:bg-gray-100"
-                }`}
+                disabled={currentPage === 1}
+                onClick={() => fetchDogs((currentPage - 2) * resultsPerPage)}
+                className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-200"
               >
-                {idx + 1}
+                &lt; Previous
               </button>
-            ))}
 
-            {Math.ceil(totalResults / resultsPerPage) > 5 && (
-              <>
-                <span className="px-2">...</span>
+              {getVisiblePages().map((page) => (
                 <button
-                  onClick={() =>
-                    fetchDogs(
-                      `/dogs/search?from=${(Math.ceil(totalResults / resultsPerPage) - 1) * resultsPerPage}`
-                    )
-                  }
-                  className="px-3 py-1 border rounded hover:bg-gray-100"
+                  key={page}
+                  onClick={() => fetchDogs((page - 1) * resultsPerPage)}
+                  className={`px-3 py-1 border rounded ${
+                    page === currentPage
+                      ? "bg-black text-white"
+                      : "hover:bg-gray-100"
+                  }`}
                 >
-                  {Math.ceil(totalResults / resultsPerPage)}
+                  {page}
                 </button>
-              </>
-            )}
+              ))}
 
-            <button
-              disabled={currentPage === Math.ceil(totalResults / resultsPerPage)}
-              onClick={() => fetchDogs(`/dogs/search?from=${currentPage * resultsPerPage}`)}
-              className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-200"
-            >
-              Next &gt;
-            </button>
+              <button
+                disabled={currentPage === totalPages}
+                onClick={() => fetchDogs(currentPage * resultsPerPage)}
+                className="px-3 py-1 border rounded disabled:opacity-50 hover:bg-gray-200"
+              >
+                Next &gt;
+              </button>
+            </div>
+
+            <div className="text-gray-600 text-sm mt-2">
+              Page <span className="font-bold">{currentPage}</span> of{" "}
+              <span className="font-bold">{totalPages}</span>
+            </div>
           </div>
         )}
 
+        {/* Match Button */}
         {favorites.length > 0 && (
           <div className="mt-8 flex justify-center">
             <button
@@ -291,6 +321,7 @@ const Search = () => {
           </div>
         )}
 
+        {/* Match Loading */}
         {loadingMatch && (
           <div className="mt-8 flex justify-center items-center gap-2">
             <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-blue-500 border-gray-200"></div>
@@ -300,6 +331,7 @@ const Search = () => {
           </div>
         )}
 
+        {/* Match Result */}
         {matchedDog && (
           <div className="mt-8 p-6 border rounded-lg bg-white shadow max-w-md mx-auto text-center">
             <h2 className="text-2xl font-bold mb-4 text-green-600">Your Match</h2>
